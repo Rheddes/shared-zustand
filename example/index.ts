@@ -5,7 +5,15 @@ import { subscribeWithSelector} from "zustand/middleware";
 import { share } from "../src";
 
 
-const UseCount = createStore(subscribeWithSelector((set) => ({
+interface CountStore {
+    count: number;
+    nested: { count: number };
+    inc: (i?: number) => void;
+    dec: (i?: number) => void;
+    incNested: (i?: number) => void;
+    decNested: (i?: number) => void;
+}
+const UseCount = createStore<CountStore>()(subscribeWithSelector((set) => ({
     count: 0,
     nested: { count: 0 },
     inc: (i = 1) => set(({ count }) => ({ count: count + i })),
@@ -14,10 +22,9 @@ const UseCount = createStore(subscribeWithSelector((set) => ({
     decNested: (i = 1) => set(({ nested: { count } }) => ({ nested: { count: count - i } })),
 })));
 
-// The generics are not needed, if zustand is imported locally.
-share<any, "count">("count", UseCount);
-// The "nested" prop is ssynced on startup
-share<any, "nested">("nested", UseCount, { initialize: true });
+share("count", UseCount);
+// The "nested" prop is synced on startup
+share("nested", UseCount, { initialize: true });
 
 UseCount.subscribe(
     (count) => {
@@ -31,7 +38,14 @@ UseCount.subscribe(
         console.log("Nested count: " + count.nested.count);
     }
 );
-
+declare global {
+    interface Window { 
+        inc: CountStore["inc"];
+        dec: CountStore["dec"];
+        incNested: CountStore["incNested"];
+        decNested: CountStore["incNested"];
+    }
+}
 window.inc = UseCount.getState().inc;
 window.dec = UseCount.getState().dec;
 window.incNested = UseCount.getState().incNested;
