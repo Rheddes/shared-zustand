@@ -1,11 +1,23 @@
+import { StoreApi, StoreMutators } from "zustand";
+
 export function isSupported() {
     return "BroadcastChannel" in globalThis;
 }
 
-export function share(
-    key: string,
-    api: any,
-    { ref = "shared-", initialize = false } = {}
+type SubscribeWithSelector<S> = StoreMutators<S, unknown>["zustand/subscribeWithSelector"];
+
+interface EventData {
+    timestamp: number;
+    state: unknown;
+}
+interface Options {
+    ref: string;
+    initialize: boolean;
+}
+export function share<TState, K extends keyof TState>(
+    key: K,
+    api: SubscribeWithSelector<StoreApi<TState>>,
+    { ref = "shared-", initialize = false }: Partial<Options> = {}
 ): [() => void, () => void] {
     const channelName = ref + "-" + key.toString();
 
@@ -23,7 +35,7 @@ export function share(
             externalUpdate = false;
         }
     );
-    channel.onmessage = (evt) => {
+    channel.onmessage = (evt: MessageEvent<EventData>) => {
         if (evt.data === undefined) {
             channel.postMessage({ timestamp: timestamp, state: api.getState()[key] });
             return;
@@ -33,7 +45,7 @@ export function share(
         }
         externalUpdate = true;
         timestamp = evt.data.timestamp;
-        api.setState({ [key]: evt.data.state });
+        api.setState({ [key as K]: evt.data.state as TState[K] } as unknown as Partial<TState>);
     };
 
     const sync = () => channel.postMessage(undefined);
