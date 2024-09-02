@@ -1,4 +1,6 @@
 import { StoreApi, StoreMutators } from "zustand";
+// NOTE: imports the typing for SubscribeWithSelector
+import "zustand/middleware";
 
 export function isSupported() {
     return "BroadcastChannel" in globalThis;
